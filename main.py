@@ -1,58 +1,31 @@
 from os import makedirs, path
 from PIL import Image
-import math
+
+from latlng import LatLng
 
 
-def save_image(image: Image):
-    image.save('crop_0_0.jpg')
-
-
-class LatLng:
-    def __init__(self, lat, lng):
-        self.lat = lat
-        self.lng = lng
-
-
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def __str__(self):
-        return f"x: {self.x}, y: {self.y}"
-
-
-class TileCoord(Point):
-    def __init__(self, x: float, y: float, z: int):
-        super().__init__(round(x), round(y))
-        self.zoom = z
-
-    def __str__(self):
-        return f"x: {self.x}, y: {self.y}, z: {self.zoom}"
-
-
-def fromLatLngToPoint(latlng: LatLng, tile_size: int) -> Point:
-    mercator = - math.log(math.tan((0.25 + latlng.lat / 360) * math.pi))
-    return Point(
-        tile_size * (latlng.lng / 360 + 0.5),
-        tile_size / 2 * (1 + mercator / math.pi))
-
-
-def fromLatLngToTileCoord(latlng: LatLng, zoom: int, tile_size: int) -> TileCoord:
-    point = fromLatLngToPoint(latlng, tile_size)
-    scale = 2 ** zoom
-
-    return TileCoord(
-        point.x * scale,
-        point.y * scale,
-        zoom
-    )
-
-
-def save_zoom(image: Image, zoom, x, y, root_directory='./images'):
-    directory = path.join(root_directory, str(zoom), str(x))
+def save_zoom(image_to_save: Image, zoom_level, x, y, root_directory='./images'):
+    directory = path.join(root_directory, str(zoom_level), str(x))
     makedirs(directory, exist_ok=True)
-    image.save(path.join(directory, f"{y}.png"), 'PNG')
+    image_to_save.save(path.join(directory, f"{y}.png"), 'PNG')
+
+
+class MapImage:
+    def __init__(self, top: int, left: int, bottom: int, right: int, tile_size: int):
+        self.top = top
+        self.left = left
+        self.bottom = bottom
+        self.right = right
+        self.tile_size = tile_size
+
+        self.min_horizontal_tile = self.left // self.tile_size
+        self.max_horizontal_tile = self.right // self.tile_size
+
+        self.min_vertical_tile = self.top // self.tile_size
+        self.max_vertical_tile = self.bottom // self.tile_size
+
+    def crop_image(self):
+        pass
 
 
 if __name__ == "__main__":
@@ -63,8 +36,8 @@ if __name__ == "__main__":
     image = Image.open(IMAGE_PATH)
     image_width, image_height = image.size
 
-    latlng0 = LatLng(48.848364, 2.30271)
-    latlng1 = LatLng(48.819998, 2.345894)
+    north_west_latlng = LatLng(48.848364, 2.30271)
+    south_east_latlng = LatLng(48.819998, 2.345894)
     image_is_too_small = False
 
     for zoom in range(19, 20):
@@ -72,8 +45,8 @@ if __name__ == "__main__":
             tile_size //= 2
 
         print(f"Generating images for zoom level {zoom} with a tile size of {tile_size}px")
-        top_left_pixel = fromLatLngToTileCoord(latlng0, zoom, tile_size)
-        bottom_right_pixel = fromLatLngToTileCoord(latlng1, zoom, tile_size)
+        top_left_pixel = north_west_latlng.convert_to_tile_coord(zoom, tile_size)
+        bottom_right_pixel = south_east_latlng.convert_to_tile_coord(zoom, tile_size)
         width = bottom_right_pixel.x - top_left_pixel.x
         height = bottom_right_pixel.y - top_left_pixel.y
 
@@ -102,5 +75,7 @@ if __name__ == "__main__":
                 coords = (px0, py0, px0 + tile_size, py0 + tile_size)
 
                 img_tile = img_tile_template.copy()
-                img_tile.paste(cropImg.crop(coords), (tx_0 if px0 == 0 else 0, ty_0 if py0 == 0 else 0))
+                img_tile.paste(
+                    cropImg.crop(coords),
+                    (tx_0 if px0 == 0 else 0, ty_0 if py0 == 0 else 0))
                 save_zoom(img_tile, zoom, i + tile0_l, j + tile0_c)
