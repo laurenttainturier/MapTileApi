@@ -1,13 +1,13 @@
 from os import makedirs, path
 from PIL import Image
 
-from LatLng import LatLng
+from latlng import LatLng
 
 
-def save_zoom(image: Image, zoom, x, y, root_directory='./images'):
-    directory = path.join(root_directory, str(zoom), str(x))
+def save_zoom(image_to_save: Image, zoom_level, x, y, root_directory='./images'):
+    directory = path.join(root_directory, str(zoom_level), str(x))
     makedirs(directory, exist_ok=True)
-    image.save(path.join(directory, f"{y}.png"), 'PNG')
+    image_to_save.save(path.join(directory, f"{y}.png"), 'PNG')
 
 
 class MapImage:
@@ -45,8 +45,8 @@ if __name__ == "__main__":
             tile_size //= 2
 
         print(f"Generating images for zoom level {zoom} with a tile size of {tile_size}px")
-        top_left_pixel = north_west_latlng.convertToTileCoord(zoom, tile_size)
-        bottom_right_pixel = south_east_latlng.convertToTileCoord(zoom, tile_size)
+        top_left_pixel = north_west_latlng.convert_to_tile_coord(zoom, tile_size)
+        bottom_right_pixel = south_east_latlng.convert_to_tile_coord(zoom, tile_size)
         width = bottom_right_pixel.x - top_left_pixel.x
         height = bottom_right_pixel.y - top_left_pixel.y
 
@@ -75,5 +75,7 @@ if __name__ == "__main__":
                 coords = (px0, py0, px0 + tile_size, py0 + tile_size)
 
                 img_tile = img_tile_template.copy()
-                img_tile.paste(cropImg.crop(coords), (tx_0 if px0 == 0 else 0, ty_0 if py0 == 0 else 0))
+                img_tile.paste(
+                    cropImg.crop(coords),
+                    (tx_0 if px0 == 0 else 0, ty_0 if py0 == 0 else 0))
                 save_zoom(img_tile, zoom, i + tile0_l, j + tile0_c)
